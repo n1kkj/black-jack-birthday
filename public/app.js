@@ -4,7 +4,7 @@ const toast = document.querySelector('#toast');
 const tokenKey = 'blackjack-birthday-token';
 const qrTargetUrl = 'http://91.107.127.150:4173/#leaderboard';
 const emojiOptions = ['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂', '🐈', '🐤', '🥳', '😂', '🐟', '🍩', '🎩', '💻', '🐢', '🚑'];
-const state = { participants: [], avatar: '', emoji: '🎲', mode: 'delta', pollId: null, signature: '' };
+const state = { participants: [], avatar: '', emoji: '🎲', mode: 'delta', pollId: null, liveUpdates: true, signature: '' };
 
 function getRoute() {
   return window.location.hash.replace('#', '') || 'leaderboard';
@@ -58,7 +58,10 @@ async function loadState() {
   const participants = payload.participants.sort((first, second) => second.score - first.score || first.name.localeCompare(second.name, 'ru'));
   const signature = getStateSignature(participants);
   const changed = signature !== state.signature;
+  const liveUpdates = payload.liveUpdates !== false;
+  const modeChanged = liveUpdates !== state.liveUpdates;
   state.participants = participants;
+  state.liveUpdates = liveUpdates;
   state.signature = signature;
   const token = localStorage.getItem(tokenKey);
   if (token && !state.participants.some((participant) => participant.token === token)) {
@@ -68,21 +71,53 @@ async function loadState() {
       window.location.hash = 'register';
     }
   }
-  return { participants: state.participants, changed };
+  return { participants: state.participants, changed, modeChanged };
+}
+
+async function loadLiveMode() {
+  const payload = await api('/api/live-mode');
+  const liveUpdates = payload.liveUpdates !== false;
+  const modeChanged = liveUpdates !== state.liveUpdates;
+  state.liveUpdates = liveUpdates;
+  return { modeChanged };
+}
+
+function updateLiveIndicators() {
+  const statusText = state.liveUpdates ? '● LIVE UPDATES' : 'Ⅱ UPDATES PAUSED';
+  const description = state.liveUpdates ? 'Каждые 2 секунды' : 'Обновление выключено админом';
+  document.querySelectorAll('.refresh-label strong').forEach((element) => { element.textContent = statusText; });
+  document.querySelectorAll('.live-copy').forEach((element) => { element.textContent = description; });
+  const toggle = document.querySelector('#toggle-live');
+  if (toggle) {
+    toggle.textContent = state.liveUpdates ? 'Выключить live' : 'Включить live';
+    toggle.classList.toggle('active', state.liveUpdates);
+    toggle.setAttribute('aria-pressed', String(state.liveUpdates));
+  }
+  const modeLabel = document.querySelector('#live-mode-label');
+  if (modeLabel) modeLabel.textContent = state.liveUpdates ? 'Лидерборд обновляется автоматически' : 'Автообновление выключено до начала вечеринки';
+}
+
+async function pollingTick() {
+  try {
+    const result = state.liveUpdates ? await loadState() : await loadLiveMode();
+    if (result.modeChanged && state.liveUpdates && typeof result.changed === 'undefined') {
+      await loadState();
+    }
+    if (state.liveUpdates && (result.changed || result.modeChanged)) {
+      if (getRoute() === 'leaderboard') renderLeaderboard();
+      if (getRoute() === 'admin') renderAdminList();
+    }
+    updateLiveIndicators();
+  } catch (error) {
+    document.querySelectorAll('.refresh-label strong').forEach((element) => { element.textContent = 'OFFLINE'; });
+  } finally {
+    state.pollId = window.setTimeout(pollingTick, state.liveUpdates ? 2000 : 15000);
+  }
 }
 
 function startPolling() {
-  window.clearInterval(state.pollId);
-  state.pollId = window.setInterval(async () => {
-    try {
-      const result = await loadState();
-      if (!result.changed) return;
-      if (getRoute() === 'leaderboard') renderLeaderboard();
-      if (getRoute() === 'admin') renderAdminList();
-    } catch (error) {
-      document.querySelectorAll('.refresh-label strong').forEach((element) => { element.textContent = 'OFFLINE'; });
-    }
-  }, 2000);
+  window.clearTimeout(state.pollId);
+  state.pollId = window.setTimeout(pollingTick, state.liveUpdates ? 2000 : 15000);
 }
 
 function renderRegister() {
@@ -182,7 +217,7 @@ function renderLeaderboard() {
     <section class="view leaderboard-view">
       <div class="leaderboard-heading">
         <div><p class="eyebrow">Tonight's table</p><h1 class="title">The <span>leaderboard.</span></h1></div>
-        <div class="leaderboard-tools"><div class="refresh-label"><strong>● LIVE UPDATES</strong>Каждые 2 секунды</div>${renderRegisterAction()}</div>
+        <div class="leaderboard-tools"><div class="refresh-label"><strong>${state.liveUpdates ? '● LIVE UPDATES' : 'Ⅱ UPDATES PAUSED'}</strong><span class="live-copy">${state.liveUpdates ? 'Каждые 2 секунды' : 'Обновление выключено админом'}</span></div>${renderRegisterAction()}</div>
       </div>
       <div class="leaderboard-content"><div class="shell-card leaderboard-card">
         ${participants.length ? `<div class="podium">${top.map((participant, index) => podiumMarkup(participant, index)).join('')}</div><div class="leader-list">${rest.map((participant, index) => rowMarkup(participant, index + 4)).join('')}</div>` : `<div class="empty-state"><strong>Стол пока пуст</strong>Стань первым игроком сегодня.</div>`}
@@ -202,6 +237,7 @@ function renderAdmin() {
   app.innerHTML = `
     <section class="view admin-view">
       <div class="section-heading"><div><p class="eyebrow">Dealer's desk</p><h1 class="title">Control <span>room.</span></h1></div><p>Здесь можно менять очки участников и сбрасывать профили для новой регистрации.</p></div>
+      <div class="shell-card live-control"><div><span class="card-label">03 / Live mode</span><strong>Режим обновлений</strong><span id="live-mode-label"></span></div><button class="live-toggle" id="toggle-live" type="button" aria-pressed="true">Выключить live</button></div>
       <div class="admin-grid">
         <div class="shell-card admin-card">
           <h2>Обновить счёт</h2><p>Выбери игрока и поставь новое значение или добавь ход.</p>
@@ -217,6 +253,7 @@ function renderAdmin() {
     </section>`;
   bindAdmin();
   renderAdminList();
+  updateLiveIndicators();
 }
 
 function renderAdminList() {
@@ -235,11 +272,30 @@ function bindAdmin() {
     state.mode = button.dataset.mode;
     document.querySelectorAll('.mode-button').forEach((item) => item.classList.toggle('active', item === button));
   }));
+  document.querySelector('#toggle-live').addEventListener('click', toggleLiveMode);
   document.querySelector('#save-score').addEventListener('click', saveScore);
   document.querySelector('#reset-all').addEventListener('click', async () => {
     if (!state.participants.length || !window.confirm('Удалить всех участников и их аватары?')) return;
     try { await api('/api/admin/reset-all', { method: 'POST', body: '{}' }); await loadState(); renderAdminList(); showToast('Стол очищен'); } catch (error) { showToast(error.message, true); }
   });
+}
+
+async function toggleLiveMode() {
+  const button = document.querySelector('#toggle-live');
+  button.disabled = true;
+  try {
+    const payload = await api('/api/admin/live-mode', { method: 'POST', body: JSON.stringify({ enabled: !state.liveUpdates }) });
+    state.liveUpdates = payload.liveUpdates !== false;
+    if (state.liveUpdates) await loadState();
+    startPolling();
+    updateLiveIndicators();
+    if (state.liveUpdates) renderAdminList();
+    showToast(state.liveUpdates ? 'Live-обновления включены' : 'Live-обновления выключены');
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function saveScore() {

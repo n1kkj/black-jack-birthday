@@ -24,9 +24,12 @@ function readState() {
   try {
     const raw = fs.readFileSync(dataFile, 'utf8');
     const state = JSON.parse(raw);
-    return { participants: Array.isArray(state.participants) ? state.participants : [] };
+    return {
+      participants: Array.isArray(state.participants) ? state.participants : [],
+      liveUpdates: state.liveUpdates !== false
+    };
   } catch (error) {
-    return { participants: [] };
+    return { participants: [], liveUpdates: true };
   }
 }
 
@@ -120,8 +123,14 @@ function handleApi(req, res, requestUrl) {
     const state = readState();
     return json(res, 200, {
       participants: state.participants.map(publicParticipant),
+      liveUpdates: state.liveUpdates,
       updatedAt: new Date().toISOString()
     });
+  }
+
+  if (req.method === 'GET' && requestUrl.pathname === '/api/live-mode') {
+    const state = readState();
+    return json(res, 200, { liveUpdates: state.liveUpdates });
   }
 
   if (req.method !== 'POST') {
@@ -164,6 +173,12 @@ function handleApi(req, res, requestUrl) {
       participant.updatedAt = new Date().toISOString();
       writeState(state);
       return json(res, 200, { participant: publicParticipant(participant) });
+    }
+
+    if (requestUrl.pathname === '/api/admin/live-mode') {
+      state.liveUpdates = body.enabled !== false;
+      writeState(state);
+      return json(res, 200, { liveUpdates: state.liveUpdates });
     }
 
     if (requestUrl.pathname === '/api/admin/reset') {

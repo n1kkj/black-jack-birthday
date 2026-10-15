@@ -3,7 +3,7 @@ const avatarFile = document.querySelector('#avatar-file');
 const toast = document.querySelector('#toast');
 const tokenKey = 'blackjack-birthday-token';
 const qrTargetUrl = 'http://91.107.127.150:4173/#leaderboard';
-const emojiOptions = ['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂', '🐈', '🐤', '🥳', '🪙', '😂', '🐟', '♞', '🍩', '💲', '🎩', '💻', '🐢', '🚑'];
+const emojiOptions = ['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂', '🐈', '🐤', '🥳', '😂', '🐟', '🍩', '🎩', '💻', '🐢', '🚑'];
 const state = { participants: [], avatar: '', emoji: '🎲', mode: 'delta', pollId: null, signature: '' };
 
 function getRoute() {

@@ -3,6 +3,7 @@ const avatarFile = document.querySelector('#avatar-file');
 const toast = document.querySelector('#toast');
 const tokenKey = 'blackjack-birthday-token';
 const qrTargetUrl = 'http://91.107.127.150:4173/#leaderboard';
+const emojiOptions = ['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂', '🐈', '🐤', '🥳', '🪙', '😂', '🐟', '♞', '🍩', '💲', '🎩', '💻', '🐢', '🚑'];
 const state = { participants: [], avatar: '', emoji: '🎲', mode: 'delta', pollId: null, signature: '' };
 
 function getRoute() {
@@ -111,7 +112,7 @@ function renderRegister() {
         </div>
         <div class="field emoji-field">
           <span class="input-label">Твой статус за столом</span>
-          <div class="emoji-picker" role="group" aria-label="Выбор эмодзи">${['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂'].map((emoji) => `<button class="emoji-button${emoji === state.emoji ? ' active' : ''}" data-emoji="${emoji}" type="button" aria-label="${emoji}">${emoji}</button>`).join('')}</div>
+          <div class="emoji-picker" role="group" aria-label="Выбор эмодзи">${emojiOptions.map((emoji) => `<button class="emoji-button${emoji === state.emoji ? ' active' : ''}" data-emoji="${emoji}" type="button" aria-label="${emoji}">${emoji}</button>`).join('')}</div>
         </div>
         <form id="register-form">
           <div class="field">

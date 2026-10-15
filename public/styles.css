@@ -56,11 +56,9 @@ button { cursor: pointer; }
 .brand b { display: block; font-size: 13px; line-height: 1.1; }
 .brand small { display: block; margin-top: 4px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: .17em; }
 .topbar-actions { display: flex; align-items: center; gap: 13px; }
-.live-status, .admin-link { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .12em; }
+.live-status { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .12em; }
 .live-status { display: inline-flex; align-items: center; gap: 7px; color: var(--green); }
 .live-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 9px var(--green); }
-.admin-link { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; transition: .2s ease; }
-.admin-link:hover { color: var(--ink); border-color: rgba(255, 255, 255, .3); }
 
 .view { animation: rise .35s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -81,9 +79,13 @@ button { cursor: pointer; }
 .card-label { margin: 0 0 20px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
 .avatar-picker { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
 .avatar-preview, .participant-avatar { display: grid; overflow: hidden; place-items: center; flex: 0 0 auto; border: 1px solid rgba(247, 207, 97, .5); border-radius: 50%; background: linear-gradient(145deg, #3a2c71, #17112d); color: var(--gold); font-family: 'Playfair Display', serif; }
-.avatar-preview { width: 80px; height: 80px; font-size: 27px; }
+.avatar-preview { width: 88px; height: 88px; font-size: 29px; }
 .avatar-preview img, .participant-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-actions { display: grid; gap: 8px; }
+.emoji-field { margin-top: 2px; }
+.emoji-picker { display: flex; flex-wrap: wrap; gap: 7px; }
+.emoji-button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: rgba(255,255,255,.04); font-size: 19px; transition: .2s ease; }
+.emoji-button:hover, .emoji-button.active { border-color: var(--gold); background: rgba(247,207,97,.14); box-shadow: 0 0 12px rgba(247,207,97,.14); transform: translateY(-1px); }
 .muted-copy { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .button-row { display: flex; flex-wrap: wrap; gap: 9px; }
 .button, .button-secondary, .button-danger { display: inline-flex; min-height: 43px; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; border: 1px solid transparent; border-radius: 11px; color: #17102e; font-weight: 800; font-size: 12px; transition: .2s ease; }
@@ -121,9 +123,11 @@ button { cursor: pointer; }
 .podium-item:first-child { min-height: 200px; order: 2; border-color: rgba(247, 207, 97, .45); background: linear-gradient(180deg, rgba(247, 207, 97, .16), rgba(247, 207, 97, .03)); }
 .podium-item:nth-child(2) { order: 1; }
 .podium-item:nth-child(3) { order: 3; }
-.podium-crown { position: absolute; top: 10px; color: var(--gold); font-size: 16px; }
-.participant-avatar { width: 55px; height: 55px; margin-bottom: 9px; font-size: 18px; }
-.podium-item:first-child .participant-avatar { width: 65px; height: 65px; border-color: var(--gold); box-shadow: 0 0 20px rgba(247, 207, 97, .24); }
+.podium-avatar-wrap { position: relative; margin-bottom: 9px; }
+.podium-crown { position: absolute; top: -15px; left: 50%; z-index: 2; color: var(--gold); font-size: 18px; line-height: 1; text-shadow: 0 0 12px rgba(247,207,97,.5); transform: translateX(-50%); }
+.podium-crown.crown-winner { top: -23px; font-size: 34px; }
+.participant-avatar { width: 62px; height: 62px; margin-bottom: 0; font-size: 19px; }
+.podium-item:first-child .participant-avatar { width: 74px; height: 74px; border-color: var(--gold); box-shadow: 0 0 20px rgba(247, 207, 97, .24); }
 .podium-place { margin-bottom: 4px; color: var(--gold); font-family: 'DM Mono', monospace; font-size: 9px; }
 .podium-name { max-width: 100%; overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .podium-score { margin-top: 5px; color: var(--pink); font-family: 'DM Mono', monospace; font-size: 12px; }
@@ -131,8 +135,9 @@ button { cursor: pointer; }
 .leader-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 58px; padding: 7px 12px; border: 1px solid rgba(255,255,255,.07); border-radius: 13px; background: rgba(255,255,255,.035); }
 .leader-rank { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; text-align: center; }
 .leader-person { display: flex; min-width: 0; align-items: center; gap: 10px; }
-.leader-person .participant-avatar { width: 35px; height: 35px; margin: 0; font-family: 'Manrope', sans-serif; font-size: 11px; }
+.leader-person .participant-avatar { width: 42px; height: 42px; margin: 0; font-family: 'Manrope', sans-serif; font-size: 12px; }
 .leader-name { overflow: hidden; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.name-emoji { margin-left: 3px; font-size: 14px; }
 .leader-score { color: var(--gold-bright); font-family: 'DM Mono', monospace; font-size: 12px; }
 .empty-state { padding: 52px 20px; color: var(--muted); text-align: center; }
 .empty-state strong { display: block; margin-bottom: 8px; color: var(--ink); font-family: 'Playfair Display', serif; font-size: 25px; }
@@ -147,8 +152,8 @@ button { cursor: pointer; }
 .mode-button.active { color: #17102e; background: var(--gold); font-weight: 800; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 17px; }
 .participant-admin-list { display: grid; gap: 8px; max-height: 440px; overflow: auto; padding-right: 3px; }
-.admin-person { display: grid; grid-template-columns: 35px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 9px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.035); }
-.admin-person .participant-avatar { width: 35px; height: 35px; margin: 0; font-family: 'Manrope', sans-serif; font-size: 11px; }
+.admin-person { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 9px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.035); }
+.admin-person .participant-avatar { width: 42px; height: 42px; margin: 0; font-family: 'Manrope', sans-serif; font-size: 12px; }
 .admin-person-name { overflow: hidden; font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .admin-person-score { color: var(--gold); font-family: 'DM Mono', monospace; font-size: 11px; }
 .icon-reset { width: 27px; height: 27px; border: 1px solid rgba(255,128,151,.25); border-radius: 8px; color: var(--danger); background: rgba(255,128,151,.08); font-size: 13px; }
@@ -157,14 +162,10 @@ button { cursor: pointer; }
 .toast { position: fixed; right: 18px; bottom: 18px; z-index: 4; max-width: min(330px, calc(100% - 36px)); padding: 12px 15px; border: 1px solid rgba(113,227,173,.35); border-radius: 11px; color: var(--ink); background: #201942; box-shadow: 0 12px 32px rgba(0,0,0,.3); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(12px); transition: .25s ease; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.error { border-color: rgba(255,128,151,.4); }
-.camera-modal { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 18px; background: rgba(5, 4, 15, .83); backdrop-filter: blur(8px); }
-.camera-box { width: min(100%, 430px); padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: #171332; box-shadow: 0 25px 80px rgba(0,0,0,.45); }
-.camera-box video { display: block; width: 100%; max-height: 58vh; margin-bottom: 13px; border-radius: 12px; background: #080711; object-fit: cover; transform: scaleX(-1); }
 
 @media (max-width: 720px) {
   .app-shell { width: min(100% - 24px, 540px); padding-top: 15px; }
   .topbar { padding-bottom: 13px; }
-  .admin-link { padding: 7px 8px; }
   .register-layout { display: block; min-height: 0; margin-top: 32px; }
   .register-copy { padding-bottom: 25px; }
   .register-copy .intro { margin: 19px 0 18px; font-size: 13px; }

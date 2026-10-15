@@ -73,6 +73,11 @@ function cleanName(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 32);
 }
 
+function cleanEmoji(value) {
+  const emoji = Array.from(String(value || '🎲')).slice(0, 3).join('');
+  return emoji || '🎲';
+}
+
 function saveAvatar(dataUrl, token) {
   if (typeof dataUrl !== 'string') {
     return '';
@@ -102,6 +107,7 @@ function publicParticipant(participant) {
     id: participant.id,
     token: participant.token,
     name: participant.name,
+    emoji: participant.emoji || '🎲',
     avatar: participant.avatar,
     score: participant.score,
     createdAt: participant.createdAt,
@@ -137,6 +143,7 @@ function handleApi(req, res, requestUrl) {
         id,
         token,
         name,
+        emoji: cleanEmoji(body.emoji),
         avatar: saveAvatar(body.avatar, token),
         score: 0,
         createdAt: now,

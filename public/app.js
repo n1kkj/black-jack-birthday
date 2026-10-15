@@ -3,7 +3,7 @@ const avatarFile = document.querySelector('#avatar-file');
 const toast = document.querySelector('#toast');
 const tokenKey = 'blackjack-birthday-token';
 const qrTargetUrl = 'http://91.107.127.150:4173/#leaderboard';
-const state = { participants: [], avatar: '', mode: 'delta', pollId: null, stream: null, signature: '' };
+const state = { participants: [], avatar: '', emoji: '🎲', mode: 'delta', pollId: null, signature: '' };
 
 function getRoute() {
   return window.location.hash.replace('#', '') || 'leaderboard';
@@ -49,7 +49,7 @@ async function api(url, options) {
 }
 
 function getStateSignature(participants) {
-  return participants.map((participant) => [participant.id, participant.name, participant.avatar, participant.score].join(':')).join('|');
+  return participants.map((participant) => [participant.id, participant.name, participant.emoji, participant.avatar, participant.score].join(':')).join('|');
 }
 
 async function loadState() {
@@ -89,6 +89,7 @@ function renderRegister() {
     window.location.hash = 'leaderboard';
     return;
   }
+  state.emoji = state.emoji || '🎲';
   app.innerHTML = `
     <section class="view register-layout">
       <div class="register-copy">
@@ -104,10 +105,13 @@ function renderRegister() {
           <div class="avatar-actions">
             <div class="button-row">
               <button class="button-secondary" id="upload-avatar" type="button">Загрузить фото</button>
-              <button class="button-secondary" id="selfie-avatar" type="button">Сделать селфи</button>
             </div>
             <p class="muted-copy">Аватар необязателен — можно оставить инициалы.</p>
           </div>
+        </div>
+        <div class="field emoji-field">
+          <span class="input-label">Твой статус за столом</span>
+          <div class="emoji-picker" role="group" aria-label="Выбор эмодзи">${['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂'].map((emoji) => `<button class="emoji-button${emoji === state.emoji ? ' active' : ''}" data-emoji="${emoji}" type="button" aria-label="${emoji}">${emoji}</button>`).join('')}</div>
         </div>
         <form id="register-form">
           <div class="field">
@@ -132,7 +136,10 @@ function bindRegister() {
     state.avatar = await readFile(file);
     preview.innerHTML = `<img src="${state.avatar}" alt="Предпросмотр аватара">`;
   };
-  document.querySelector('#selfie-avatar').addEventListener('click', openCamera);
+  document.querySelectorAll('[data-emoji]').forEach((button) => button.addEventListener('click', () => {
+    state.emoji = button.dataset.emoji;
+    document.querySelectorAll('[data-emoji]').forEach((item) => item.classList.toggle('active', item === button));
+  }));
   nameInput.addEventListener('input', () => {
     if (!state.avatar) preview.textContent = initials(nameInput.value || '?');
   });
@@ -142,9 +149,10 @@ function bindRegister() {
     button.disabled = true;
     button.textContent = 'Сохраняем…';
     try {
-      const payload = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: nameInput.value, avatar: state.avatar }) });
+      const payload = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: nameInput.value, emoji: state.emoji, avatar: state.avatar }) });
       localStorage.setItem(tokenKey, payload.token);
       state.avatar = '';
+      state.emoji = '🎲';
       showToast('Профиль создан. Добро пожаловать!');
       window.location.hash = 'leaderboard';
     } catch (error) {
@@ -162,40 +170,6 @@ function readFile(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-async function openCamera() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showToast('Камера недоступна в этом браузере', true);
-    return;
-  }
-  try {
-    state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-    const modal = document.createElement('div');
-    modal.className = 'camera-modal';
-    modal.innerHTML = `<div class="camera-box"><video autoplay playsinline></video><div class="button-row"><button class="button" id="capture-selfie">Снять фото</button><button class="button-secondary" id="close-camera">Отмена</button></div></div>`;
-    document.body.append(modal);
-    const video = modal.querySelector('video');
-    video.srcObject = state.stream;
-    modal.querySelector('#close-camera').addEventListener('click', () => closeCamera(modal));
-    modal.querySelector('#capture-selfie').addEventListener('click', () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-      state.avatar = canvas.toDataURL('image/jpeg', .82);
-      document.querySelector('#avatar-preview').innerHTML = `<img src="${state.avatar}" alt="Предпросмотр аватара">`;
-      closeCamera(modal);
-    });
-  } catch (error) {
-    showToast('Не получилось открыть камеру', true);
-  }
-}
-
-function closeCamera(modal) {
-  if (state.stream) state.stream.getTracks().forEach((track) => track.stop());
-  state.stream = null;
-  modal.remove();
 }
 
 function renderLeaderboard() {
@@ -216,11 +190,11 @@ function renderLeaderboard() {
 }
 
 function podiumMarkup(participant, index) {
-  return `<div class="podium-item"><span class="podium-crown">${index === 0 ? '♛' : '✦'}</span>${avatarMarkup(participant, 'participant-avatar')}<span class="podium-place">${index + 1} PLACE</span><span class="podium-name">${escapeHtml(participant.name)}</span><span class="podium-score">${formatScore(participant.score)}</span></div>`;
+  return `<div class="podium-item"><div class="podium-avatar-wrap">${avatarMarkup(participant, 'participant-avatar')}<span class="podium-crown${index === 0 ? ' crown-winner' : ''}">${index === 0 ? '♛' : '✦'}</span></div><span class="podium-place">${index + 1} PLACE</span><span class="podium-name">${escapeHtml(participant.name)} <span class="name-emoji">${escapeHtml(participant.emoji || '🎲')}</span></span><span class="podium-score">${formatScore(participant.score)}</span></div>`;
 }
 
 function rowMarkup(participant, rank) {
-  return `<div class="leader-row"> <span class="leader-rank">${rank}</span><div class="leader-person">${avatarMarkup(participant, 'participant-avatar')}<span class="leader-name">${escapeHtml(participant.name)}</span></div><span class="leader-score">${formatScore(participant.score)}</span></div>`;
+  return `<div class="leader-row"> <span class="leader-rank">${rank}</span><div class="leader-person">${avatarMarkup(participant, 'participant-avatar')}<span class="leader-name">${escapeHtml(participant.name)} <span class="name-emoji">${escapeHtml(participant.emoji || '🎲')}</span></span></div><span class="leader-score">${formatScore(participant.score)}</span></div>`;
 }
 
 function renderAdmin() {
@@ -251,7 +225,7 @@ function renderAdminList() {
   const selected = select.value;
   select.innerHTML = state.participants.length ? state.participants.map((participant) => `<option value="${participant.id}">${escapeHtml(participant.name)} · ${formatScore(participant.score)}</option>`).join('') : '<option value="">Нет участников</option>';
   if (state.participants.some((participant) => participant.id === selected)) select.value = selected;
-  list.innerHTML = state.participants.length ? state.participants.map((participant) => `<div class="admin-person">${avatarMarkup(participant, 'participant-avatar')}<span class="admin-person-name">${escapeHtml(participant.name)}</span><span class="admin-person-score">${formatScore(participant.score)}</span><button class="icon-reset" data-reset="${participant.id}" type="button" title="Сбросить профиль">↻</button></div>`).join('') : '<div class="admin-empty">Участников пока нет.</div>';
+  list.innerHTML = state.participants.length ? state.participants.map((participant) => `<div class="admin-person">${avatarMarkup(participant, 'participant-avatar')}<span class="admin-person-name">${escapeHtml(participant.name)} <span class="name-emoji">${escapeHtml(participant.emoji || '🎲')}</span></span><span class="admin-person-score">${formatScore(participant.score)}</span><button class="icon-reset" data-reset="${participant.id}" type="button" title="Сбросить профиль">↻</button></div>`).join('') : '<div class="admin-empty">Участников пока нет.</div>';
   list.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => resetParticipant(button.dataset.reset)));
 }
 

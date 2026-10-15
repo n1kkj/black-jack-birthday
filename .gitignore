@@ -1,3 +1,7 @@
 uploads/*
 !uploads/.gitkeep
 node_modules/
+server.pid
+server.log
+server-error.log
+logs/

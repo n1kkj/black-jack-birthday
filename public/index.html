@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d0a1f">
+  <title>Blackjack Birthday</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-glow page-glow-left"></div>
+  <div class="page-glow page-glow-right"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#leaderboard" aria-label="На лидерборд">
+        <span class="brand-mark">♠</span>
+        <span><b>BLACKJACK</b><small>BIRTHDAY CLUB</small></span>
+      </a>
+      <div class="topbar-actions">
+        <span class="live-status"><i></i> LIVE</span>
+        <a class="admin-link" href="#admin">ADMIN</a>
+      </div>
+    </header>
+
+    <main id="app" aria-live="polite"></main>
+
+    <footer class="footer-note">THE HOUSE ALWAYS WINS · BUT TONIGHT WE PLAY TOGETHER</footer>
+  </div>
+
+  <input id="avatar-file" type="file" accept="image/*" hidden>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

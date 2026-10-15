@@ -1,0 +1,22 @@
+{
+  "participants": [
+    {
+      "id": "bb85430f-b3ed-49b9-8a16-7cf3ccf478ee",
+      "token": "e3776d66353fbc4b03ea5ba9f5288d2cba17002fe8fd4ce0664908343ccdc99c",
+      "name": "Никита Лакин",
+      "avatar": "/uploads/e3776d66353fbc4b03ea5ba9f5288d2cba17002fe8fd4ce0664908343ccdc99c.jpg",
+      "score": 0,
+      "createdAt": "2026-10-15T11:42:50.626Z",
+      "updatedAt": "2026-10-15T11:42:50.626Z"
+    },
+    {
+      "id": "417069d7-f176-4fd6-8a63-c713615928e0",
+      "token": "750b6f5a2f0d0c7708e31fc3d60672731d8cfcaff9fa3bb8768e6b537ef1112c",
+      "name": "Дарья Лакина",
+      "avatar": "/uploads/750b6f5a2f0d0c7708e31fc3d60672731d8cfcaff9fa3bb8768e6b537ef1112c.jpg",
+      "score": 0,
+      "createdAt": "2026-10-15T11:43:17.770Z",
+      "updatedAt": "2026-10-15T11:43:17.770Z"
+    }
+  ]
+}

@@ -2,7 +2,7 @@ const app = document.querySelector('#app');
 const avatarFile = document.querySelector('#avatar-file');
 const toast = document.querySelector('#toast');
 const tokenKey = 'blackjack-birthday-token';
-const qrTargetUrl = 'https://blackjack-birthday.example/#leaderboard';
+const qrTargetUrl = 'http://91.107.127.150:4173/#leaderboard';
 const state = { participants: [], avatar: '', mode: 'delta', pollId: null, stream: null, signature: '' };
 
 function getRoute() {

@@ -28,7 +28,7 @@ test('bonuses count separately, and each guest has a $700 activity cap',()=>{
   const s=initial();
   post(s,{kind:'bonus',game:'activities',entries:[{playerId:'p1',delta:400}]});
   assert.equal(e.calculate(s.participants,s.transactions).participants[0].bonus,400);
-  assert.throws(()=>post(s,{kind:'bonus',game:'activities',entries:[{playerId:'p1',delta:301}]}),/лимит/i);
+  assert.throws(()=>post(s,{kind:'bonus',game:'activities',entries:[{playerId:'p1',delta:301}]}),/лимит/ii);
 });
 test('loan debt reduces overall wealth and repayment cannot exceed debt',()=>{
   const s=initial();
@@ -38,7 +38,7 @@ test('loan debt reduces overall wealth and repayment cannot exceed debt',()=>{
   assert.equal(b.participants[0].netWorth,1800);
   post(s,{kind:'loan',game:'credit',entries:[{playerId:'p1',delta:-300}]});
   assert.equal(e.calculate(s.participants,s.transactions).participants[0].debt,200);
-  assert.throws(()=>post(s,{kind:'loan',game:'credit',entries:[{playerId:'p1',delta:-201}]}),/лимит/);
+  assert.throws(()=>post(s,{kind:'loan',game:'credit',entries:[{playerId:'p1',delta:-201}]}),/лимит/i);
 });
 test('reversal is auditable, cannot be repeated and restores ranking',()=>{
   const s=initial();

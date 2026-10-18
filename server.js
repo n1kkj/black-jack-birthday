@@ -27,7 +27,7 @@ function initialize(){
   fs.mkdirSync(DATA,{recursive:true});fs.mkdirSync(UPLOADS,{recursive:true});
   if(!fs.existsSync(participantsFile))writeJson(participantsFile,{participants:[],liveUpdates:true});
   if(!fs.existsSync(transactionsFile))writeJson(transactionsFile,{transactions:[]});
-  if(!fs.existsSync(adminsFile)){
+  if(!fs.existsSync(adminsFile)||!safeJson(adminsFile,{users:[]}).users?.length){
     const user=String(process.env.ADMIN_USERNAME||'owner').trim();
     const pass=String(process.env.ADMIN_PASSWORD||'');
     if(pass.length>=12){

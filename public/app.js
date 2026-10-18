@@ -79,7 +79,7 @@ function staffPanel(){
 function renderAdmin(){
   if(!state.admin)return adminLogin();
   app.innerHTML='<section class="view">'+header('Пульт управления','Внесение итогов раздач, бонусов, кредитов и проверяемая история денег.')+
-    '<div class="admin-bar"><span>Вы вошли как <b>'+esc(state.admin.username)+'</b> · '+esc(state.admin.role)+'</span><button id="logout" class="secondary small">Выйти</button></div>'+
+    '<div class="admin-bar"><span>Вы вошли как <b>'+esc(state.admin.username)+'</b> · '+esc(state.admin.role)+'</span><div><button id="toggle-live" class="secondary small">'+(state.liveUpdates?'Приостановить табло':'Включить табло')+'</button> <button id="logout" class="secondary small">Выйти</button></div></div>'+
     '<div class="stat-strip"><div><small>Капитал банка</small><strong class="'+(state.finance.bank<0?'negative':'')+'">'+fmt(state.finance.bank)+' $</strong></div><div><small>Не выдано наград</small><strong>'+fmt(state.finance.reservedBonuses)+' $</strong></div><div><small>Выдано кредитов</small><strong>'+fmt(state.finance.activeCredit)+' $</strong></div></div>'+
     (state.finance.bank<0||state.finance.unbacked>0?'<div class="warning">Внимание: банк в минусе или обязательства превышают номинал запасов. Сверьте физические фишки и задолженности.</div>':'')+
     '<div class="admin-columns"><div class="stack">'+
@@ -91,12 +91,14 @@ function renderAdmin(){
     '<div class="panel"><h2>Участники</h2><p class="muted">Можно добавить гостя вручную или вставить список «Имя; серийный номер» по строкам. Максимум 23 человека.</p>'+
     '<form id="guest-form" class="form-grid"><label>Имя<input name="name" required></label><label>Серийный номер<input name="serial" maxlength="6" placeholder="BLK721"></label><button class="secondary">Добавить гостя</button></form>'+
     '<form id="bulk-form"><label>Массовый импорт<textarea name="text" rows="3" placeholder="Рома; BLK721&#10;Сеня; MFX309"></textarea></label><button class="secondary" type="submit">Импортировать</button></form>'+
-    '<p class="muted">Все участники: '+state.participants.length+' / 23</p></div>'+staffPanel()+'</div>'+
+    '<p class="muted">Все участники: '+state.participants.length+' / 23</p><div class="accounts">'+state.participants.map(p=>'<div><b>'+esc(p.name)+'</b><small>'+esc(p.serial||'')+'</small><button class="text-button" type="button" data-archive="'+esc(p.id)+'">Скрыть</button></div>').join('')+'</div></div>'+staffPanel()+'</div>'+
     '<div class="panel audit"><div class="flex-heading"><h2>Журнал операций</h2><button id="reload" class="secondary small">Обновить</button></div>'+transactionList()+'</div></div></section>';
   bindAdmin();
 }
 function bindAdmin(){
   document.querySelector('#logout').onclick=async()=>{try{await post('/api/admin/logout',{});}catch{}state.admin=null;renderAdmin();};
+  document.querySelector('#toggle-live').onclick=async()=>{try{await post('/api/admin/live-mode',{enabled:!state.liveUpdates});await refresh();renderAdmin();announce(state.liveUpdates?'Табло обновляется':'Обновления приостановлены');}catch(err){announce(err.message,true);}};
+  document.querySelectorAll('[data-archive]').forEach(b=>b.onclick=async()=>{if(!confirm('Скрыть гостя из таблиц? Это возможно, только если у него нет записанных операций.'))return;try{await post('/api/admin/participants/archive',{id:b.dataset.archive});await refresh();renderAdmin();announce('Гость скрыт');}catch(err){announce(err.message,true);}});
   const rows=document.querySelector('#entry-rows'),form=document.querySelector('#record-form'),game=document.querySelector('#record-game');
   const total=()=>{const sum=[...rows.querySelectorAll('input[name=delta]')].reduce((n,input)=>n+(Number(input.value)||0),0);document.querySelector('#record-total').textContent='Сумма изменений: '+signed(sum)+(game.value==='poker'&&sum!==0?' · покер не сбалансирован':'');};
   function wire(){rows.querySelectorAll('.remove-entry').forEach(b=>b.onclick=()=>{if(rows.children.length>1)b.parentElement.remove();total();});rows.querySelectorAll('input').forEach(i=>i.oninput=total);total();}

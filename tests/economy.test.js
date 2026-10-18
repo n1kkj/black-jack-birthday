@@ -28,7 +28,7 @@ test('bonuses count separately, and each guest has a $700 activity cap',()=>{
   const s=initial();
   post(s,{kind:'bonus',game:'activities',entries:[{playerId:'p1',delta:400}]});
   assert.equal(e.calculate(s.participants,s.transactions).participants[0].bonus,400);
-  assert.throws(()=>post(s,{kind:'bonus',game:'activities',entries:[{playerId:'p1',delta:301}]}),/лимит/);
+  assert.throws(()=>post(s,{kind:'bonus',game:'activities',entries:[{playerId:'p1',delta:301}]}),/лимит/i);
 });
 test('loan debt reduces overall wealth and repayment cannot exceed debt',()=>{
   const s=initial();

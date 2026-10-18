@@ -6,3 +6,6 @@ server.log
 server-error.log
 logs/
 data/participants.json
+data/admins.json
+data/transactions.json
+data/*.tmp

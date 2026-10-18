@@ -1,324 +1,143 @@
-const app = document.querySelector('#app');
-const avatarFile = document.querySelector('#avatar-file');
-const toast = document.querySelector('#toast');
-const tokenKey = 'blackjack-birthday-token';
-const qrTargetUrl = 'http://91.107.127.150:4173/#leaderboard';
-const emojiOptions = ['🎲', '🔥', '👑', '🃏', '💎', '🍀', '⚡', '🥂', '🐈', '🐤', '🥳', '😂', '🐟', '🍩', '🎩', '💻', '🐢', '🚑'];
-const state = { participants: [], avatar: '', emoji: '🎲', mode: 'delta', pollId: null, liveUpdates: true, signature: '' };
-
-function getRoute() {
-  return window.location.hash.replace('#', '') || 'leaderboard';
+'use strict';
+const app=document.querySelector('#app');
+const toast=document.querySelector('#toast');
+const state={boards:{},participants:[],finance:{},admin:null,transactions:[],accounts:[],board:'overall',liveUpdates:true,registrationEnabled:false,poll:null};
+const types=[
+  ['poker','♠ Покер','game'],['craps','⚄ Крэпс','game'],['blackjack','♣ Блэкджек','game'],
+  ['roulette','◉ Рулетка','game'],['activities','✦ Активности','bonus'],
+  ['credit','↔ Кредит / возврат','loan'],['adjustment','✎ Корректировка','adjustment']
+];
+const names={overall:'Общий рейтинг',poker:'Покер',craps:'Крэпс',blackjack:'Блэкджек',roulette:'Рулетка',activities:'Активности',credit:'Кредит',adjustment:'Корректировка'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n||0).toLocaleString('ru-RU');
+const signed=n=>(Number(n)>0?'+':'')+fmt(n)+' $';
+function initials(s){return esc(String(s||'?').split(/\s+/).slice(0,2).map(v=>v[0]).join('').toUpperCase());}
+function avatar(p,size=''){return '<span class="coin-face '+size+'">'+(p.avatar?'<img src="'+esc(p.avatar)+'" alt="">':initials(p.name))+'</span>';}
+function announce(message,bad=false){toast.textContent=message;toast.className='toast show'+(bad?' error':'');clearTimeout(announce.timer);announce.timer=setTimeout(()=>toast.className='toast',3500);}
+async function api(path,options={}){
+  const resp=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});
+  const data=await resp.json();
+  if(!resp.ok)throw Error(data.error||'Ошибка запроса');
+  return data;
 }
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[character]));
+const post=(url,payload)=>api(url,{method:'POST',body:JSON.stringify(payload)});
+async function refresh(){
+  const data=await api('/api/state');
+  state.boards=data.boards||{};state.participants=data.participants||[];state.finance=data.finance||{};
+  state.liveUpdates=data.liveUpdates!==false;state.registrationEnabled=!!data.registrationEnabled;
+  const label=document.querySelector('.live-label');if(label)label.textContent=state.liveUpdates?'● LIVE':'Ⅱ PAUSED';
 }
-
-function initials(name) {
-  return escapeHtml(String(name).split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase());
+function header(title,caption){return '<div class="heading"><span class="eyebrow">THE BLACK 21 / CASINO NIGHT</span><h1>'+title+'</h1><p>'+caption+'</p></div>';}
+function nav(){return '<nav class="board-nav" aria-label="Рейтинги">'+['overall','poker','craps','blackjack','roulette','activities'].map(k=>'<button type="button" data-board="'+k+'" class="'+(state.board===k?'active':'')+'">'+esc(names[k])+'</button>').join('')+'</nav>';}
+function renderBoard(){
+  const players=state.boards[state.board]||[];const isOverall=state.board==='overall';
+  const leaders=players.slice(0,3);
+  app.innerHTML='<section class="view">'+header(isOverall?'Короли казино':'Рейтинг: '+names[state.board],isOverall?'Общий капитал, победы, бонусы и долги — один честный итог.':'Рейтинг по чистому выигрышу или проигрышу в выбранной игре.')+
+    '<div class="stat-strip"><div><small>В игре</small><strong>'+state.participants.length+' / 23</strong></div><div><small>Касса казино</small><strong class="'+(state.finance.bank<0?'negative':'')+'">'+fmt(state.finance.bank)+' $</strong></div><div><small>Резерв наград</small><strong>'+fmt(state.finance.reservedBonuses)+' $</strong></div></div>'+
+    nav()+'<div class="podium">'+leaders.map((p,i)=>'<div class="winner rank-'+(i+1)+'"><span class="placement">'+(['I','II','III'][i])+' МЕСТО</span>'+avatar(p,'big')+'<strong>'+esc(p.name)+'</strong><span class="serial">'+esc(p.serial||'BLACK 21')+'</span><b class="'+(p.score<0?'negative':'')+'">'+(isOverall?fmt(p.score)+' $':signed(p.score))+'</b></div>').join('')+'</div>'+
+    '<div class="table-card"><div class="table-head"><span>МЕСТО / ИГРОК</span><span>'+(isOverall?'КАПИТАЛ':'ЧИСТЫЙ РЕЗУЛЬТАТ')+'</span></div>'+
+    (players.length?players.map(p=>'<div class="player-row"><span class="rank-number">'+String(p.rank).padStart(2,'0')+'</span>'+avatar(p)+
+      '<span class="person-detail"><b>'+esc(p.name)+'</b><small>'+esc(p.serial||'Гость казино')+(isOverall?' · игры: '+signed(p.gameProfit):'')+'</small></span>'+
+      '<strong class="'+(p.score<0?'negative':'')+'">'+(isOverall?fmt(p.score)+' $':signed(p.score))+'</strong></div>').join(''):'<div class="empty">Пока нет участников. Администратор добавит гостей перед началом игр.</div>')+'</div>'+
+    '<p class="disclaimer">Казино использует условные деньги. Общий рейтинг = доступный капитал минус непогашенный игровой кредит. Значения обновляются автоматически.</p></section>';
+  document.querySelectorAll('[data-board]').forEach(b=>b.onclick=()=>{state.board=b.dataset.board;renderBoard();});
 }
-
-function formatScore(score) {
-  return `${Number(score).toLocaleString('ru-RU')} фишек`;
+function renderRegistration(){
+  app.innerHTML='<section class="view small-view">'+header('Войти в семью','Регистрация участника по приглашению организатора.')+
+    '<div class="panel">'+(state.registrationEnabled?'<form id="register"><label>Имя<input name="name" maxlength="60" required placeholder="Ваше имя"></label><label>Код приглашения<input name="code" required placeholder="Код от организатора"></label><label>Персональный серийный номер (необязательно)<input name="serial" maxlength="6" placeholder="BLK721"></label><button class="primary">Зарегистрироваться</button></form>':'<p class="muted">Саморегистрация сейчас закрыта. Обратись к организатору или администратору — он добавит тебя в список гостей.</p>')+'</div></section>';
+  const form=document.querySelector('#register');if(form)form.onsubmit=async e=>{e.preventDefault();const b=Object.fromEntries(new FormData(form));try{await post('/api/register',b);await refresh();location.hash='#leaderboard';announce('Участник добавлен');}catch(err){announce(err.message,true);}};
 }
-
-function renderRegisterAction() {
-  return localStorage.getItem(tokenKey)
-    ? '<span class="button-secondary button-disabled">Профиль активен</span>'
-    : '<a class="button register-action" href="#register">Зарегистрироваться <span>→</span></a>';
+function adminLogin(){
+  app.innerHTML='<section class="view small-view">'+header('Доступ в казино','Вход только для организатора и назначенных администраторов.')+
+    '<div class="panel"><form id="login"><label>Логин<input name="username" autocomplete="username" required></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Войти в админку →</button></form><p class="muted">Первый администратор задаётся переменными окружения ADMIN_USERNAME и ADMIN_PASSWORD на сервере.</p></div></section>';
+  document.querySelector('#login').onsubmit=async e=>{e.preventDefault();try{const d=await post('/api/admin/login',Object.fromEntries(new FormData(e.target)));state.admin=d.user;await loadAdmin();renderAdmin();announce('Вход выполнен');}catch(err){announce(err.message,true);}};
 }
-
-function avatarMarkup(participant, className) {
-  const fallback = initials(participant.name);
-  return `<div class="${className}">${participant.avatar ? `<img src="${participant.avatar}" alt="">` : fallback}</div>`;
+async function loadAdmin(){
+  const [a,b]=await Promise.all([api('/api/admin/transactions'),state.admin?.role==='owner'?api('/api/admin/accounts'):Promise.resolve({accounts:[]})]);
+  state.transactions=a.transactions;state.accounts=b.accounts;
 }
-
-function showToast(message, isError) {
-  toast.textContent = message;
-  toast.className = `toast show${isError ? ' error' : ''}`;
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => { toast.className = 'toast'; }, 3000);
+const selector=()=>'<select class="select" name="playerId">'+
+  '<option value="">Участник…</option>'+state.participants.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' ('+esc(p.serial||'—')+')</option>').join('')+'</select>';
+function entryRow(){return '<div class="entry-row">'+selector()+'<input type="number" step="1" name="delta" required placeholder="+ выигрыш / − проигрыш" aria-label="Изменение фишек"><button class="tiny danger remove-entry" type="button" aria-label="Удалить строку">×</button></div>';}
+function transactionList(){
+  const people=new Map(state.participants.map(p=>[p.id,p.name]));
+  if(!state.transactions.length)return '<p class="muted">Операций пока нет.</p>';
+  return state.transactions.slice(0,80).map(t=>{
+    const parts=t.entries.map(e=>esc(people.get(e.playerId)||'Удалённый игрок')+' '+signed(e.delta)).join(' · ');
+    const cancelled=state.transactions.some(z=>z.reversalOf===t.id);
+    const label=names[t.game]||t.game;
+    return '<div class="audit-row"><div><b>'+esc(label)+'</b> <small>'+esc(new Date(t.createdAt).toLocaleString('ru-RU'))+' · '+esc(t.createdBy)+'</small></div><p>'+parts+'</p><small>'+esc(t.note||'Без примечания')+(t.reversalOf?' · ОТМЕНА':'')+'</small>'+
+      ((!t.reversalOf&&!cancelled)?'<button class="text-button" data-reverse="'+esc(t.id)+'" type="button">Отменить запись</button>':'<span class="tag">'+(t.reversalOf?'Отмена':'Отменено')+'</span>')+'</div>';
+  }).join('');
 }
-
-async function api(url, options) {
-  const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(payload.error || 'Что-то пошло не так');
-  }
-  return payload;
+function staffPanel(){
+  if(state.admin?.role!=='owner')return '';
+  return '<div class="panel"><h2>Назначенные администраторы</h2><p class="muted">Добавляй отдельных сотрудников. У каждого — свой логин и пароль, а все операции сохраняют имя автора.</p>'+
+    '<div class="accounts">'+state.accounts.map(u=>'<div><b>'+esc(u.username)+'</b> <small>'+esc(u.role)+'</small>'+(u.role!=='owner'?'<button class="text-button" data-revoke="'+esc(u.username)+'">Отозвать доступ</button>':'')+'</div>').join('')+'</div>'+
+    '<form id="staff-form" class="form-grid"><label>Логин<input name="username" required minlength="3" maxlength="32" placeholder="dealer_1"></label><label>Новый пароль<input name="password" type="password" minlength="12" required placeholder="Не менее 12 символов"></label><button class="secondary">Добавить администратора</button></form></div>';
 }
-
-function getStateSignature(participants) {
-  return participants.map((participant) => [participant.id, participant.name, participant.emoji, participant.avatar, participant.score].join(':')).join('|');
-}
-
-async function loadState() {
-  const payload = await api('/api/state');
-  const participants = payload.participants.sort((first, second) => second.score - first.score || first.name.localeCompare(second.name, 'ru'));
-  const signature = getStateSignature(participants);
-  const changed = signature !== state.signature;
-  const liveUpdates = payload.liveUpdates !== false;
-  const modeChanged = liveUpdates !== state.liveUpdates;
-  state.participants = participants;
-  state.liveUpdates = liveUpdates;
-  state.signature = signature;
-  const token = localStorage.getItem(tokenKey);
-  if (token && !state.participants.some((participant) => participant.token === token)) {
-    localStorage.removeItem(tokenKey);
-    if (getRoute() !== 'register') {
-      showToast('Ваш профиль сброшен администратором', true);
-      window.location.hash = 'register';
-    }
-  }
-  return { participants: state.participants, changed, modeChanged };
-}
-
-async function loadLiveMode() {
-  const payload = await api('/api/live-mode');
-  const liveUpdates = payload.liveUpdates !== false;
-  const modeChanged = liveUpdates !== state.liveUpdates;
-  state.liveUpdates = liveUpdates;
-  return { modeChanged };
-}
-
-function updateLiveIndicators() {
-  const statusText = state.liveUpdates ? '● LIVE UPDATES' : 'Ⅱ UPDATES PAUSED';
-  const description = state.liveUpdates ? 'Каждые 2 секунды' : 'Обновление выключено админом';
-  document.querySelectorAll('.refresh-label strong').forEach((element) => { element.textContent = statusText; });
-  document.querySelectorAll('.live-copy').forEach((element) => { element.textContent = description; });
-  const toggle = document.querySelector('#toggle-live');
-  if (toggle) {
-    toggle.textContent = state.liveUpdates ? 'Выключить live' : 'Включить live';
-    toggle.classList.toggle('active', state.liveUpdates);
-    toggle.setAttribute('aria-pressed', String(state.liveUpdates));
-  }
-  const modeLabel = document.querySelector('#live-mode-label');
-  if (modeLabel) modeLabel.textContent = state.liveUpdates ? 'Лидерборд обновляется автоматически' : 'Автообновление выключено до начала вечеринки';
-}
-
-async function pollingTick() {
-  try {
-    const result = state.liveUpdates ? await loadState() : await loadLiveMode();
-    if (result.modeChanged && state.liveUpdates && typeof result.changed === 'undefined') {
-      await loadState();
-    }
-    if (state.liveUpdates && (result.changed || result.modeChanged)) {
-      if (getRoute() === 'leaderboard') renderLeaderboard();
-      if (getRoute() === 'admin') renderAdminList();
-    }
-    updateLiveIndicators();
-  } catch (error) {
-    document.querySelectorAll('.refresh-label strong').forEach((element) => { element.textContent = 'OFFLINE'; });
-  } finally {
-    state.pollId = window.setTimeout(pollingTick, state.liveUpdates ? 2000 : 15000);
-  }
-}
-
-function startPolling() {
-  window.clearTimeout(state.pollId);
-  state.pollId = window.setTimeout(pollingTick, state.liveUpdates ? 2000 : 15000);
-}
-
-function renderRegister() {
-  if (localStorage.getItem(tokenKey)) {
-    window.location.hash = 'leaderboard';
-    return;
-  }
-  state.emoji = state.emoji || '🎲';
-  app.innerHTML = `
-    <section class="view register-layout">
-      <div class="register-copy">
-        <p class="eyebrow">A private table for one special night</p>
-        <h1 class="title">Welcome to the<br><span>birthday table.</span></h1>
-        <p class="intro">Зарегистрируйся, выбери аватар и следи, как меняется расклад за игровым столом. Счёт обновляется в реальном времени.</p>
-        <div class="suit-row"><span>♠</span><span>♥</span><span>♦</span><span>♣</span></div>
-      </div>
-      <div class="shell-card register-card">
-        <p class="card-label">01 / Join the game</p>
-        <div class="avatar-picker">
-          <div id="avatar-preview" class="avatar-preview">?</div>
-          <div class="avatar-actions">
-            <div class="button-row">
-              <button class="button-secondary" id="upload-avatar" type="button">Загрузить фото</button>
-            </div>
-            <p class="muted-copy">Аватар необязателен — можно оставить инициалы.</p>
-          </div>
-        </div>
-        <div class="field emoji-field">
-          <span class="input-label">Твой статус за столом</span>
-          <div class="emoji-picker" role="group" aria-label="Выбор эмодзи">${emojiOptions.map((emoji) => `<button class="emoji-button${emoji === state.emoji ? ' active' : ''}" data-emoji="${emoji}" type="button" aria-label="${emoji}">${emoji}</button>`).join('')}</div>
-        </div>
-        <form id="register-form">
-          <div class="field">
-            <label class="input-label" for="name">Как тебя зовут?</label>
-            <input class="text-input" id="name" name="name" maxlength="32" autocomplete="name" placeholder="Например, Дима" required>
-          </div>
-          <button class="button register-submit" type="submit">Войти за стол <span>→</span></button>
-        </form>
-        <a class="helper-link" href="#leaderboard">Смотреть лидерборд без регистрации</a>
-      </div>
-    </section>`;
-  bindRegister();
-}
-
-function bindRegister() {
-  const nameInput = document.querySelector('#name');
-  const preview = document.querySelector('#avatar-preview');
-  document.querySelector('#upload-avatar').addEventListener('click', () => avatarFile.click());
-  avatarFile.onchange = async () => {
-    const [file] = avatarFile.files;
-    if (!file) return;
-    state.avatar = await readFile(file);
-    preview.innerHTML = `<img src="${state.avatar}" alt="Предпросмотр аватара">`;
-  };
-  document.querySelectorAll('[data-emoji]').forEach((button) => button.addEventListener('click', () => {
-    state.emoji = button.dataset.emoji;
-    document.querySelectorAll('[data-emoji]').forEach((item) => item.classList.toggle('active', item === button));
-  }));
-  nameInput.addEventListener('input', () => {
-    if (!state.avatar) preview.textContent = initials(nameInput.value || '?');
-  });
-  document.querySelector('#register-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const button = event.currentTarget.querySelector('button[type="submit"]');
-    button.disabled = true;
-    button.textContent = 'Сохраняем…';
-    try {
-      const payload = await api('/api/register', { method: 'POST', body: JSON.stringify({ name: nameInput.value, emoji: state.emoji, avatar: state.avatar }) });
-      localStorage.setItem(tokenKey, payload.token);
-      state.avatar = '';
-      state.emoji = '🎲';
-      showToast('Профиль создан. Добро пожаловать!');
-      window.location.hash = 'leaderboard';
-    } catch (error) {
-      showToast(error.message, true);
-      button.disabled = false;
-      button.textContent = 'Войти за стол →';
-    }
-  });
-}
-
-function readFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function renderLeaderboard() {
-  const participants = state.participants;
-  const top = participants.slice(0, 3);
-  const rest = participants.slice(3);
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=${encodeURIComponent(qrTargetUrl)}`;
-  app.innerHTML = `
-    <section class="view leaderboard-view">
-      <div class="leaderboard-heading">
-        <div><p class="eyebrow">Tonight's table</p><h1 class="title">The <span>leaderboard.</span></h1></div>
-        <div class="leaderboard-tools"><div class="refresh-label"><strong>${state.liveUpdates ? '● LIVE UPDATES' : 'Ⅱ UPDATES PAUSED'}</strong><span class="live-copy">${state.liveUpdates ? 'Каждые 2 секунды' : 'Обновление выключено админом'}</span></div>${renderRegisterAction()}</div>
-      </div>
-      <div class="leaderboard-content"><div class="shell-card leaderboard-card">
-        ${participants.length ? `<div class="podium">${top.map((participant, index) => podiumMarkup(participant, index)).join('')}</div><div class="leader-list">${rest.map((participant, index) => rowMarkup(participant, index + 4)).join('')}</div>` : `<div class="empty-state"><strong>Стол пока пуст</strong>Стань первым игроком сегодня.</div>`}
-      </div><aside class="shell-card qr-card"><p class="card-label">02 / Join the table</p><div class="qr-frame"><img src="${qrImageUrl}" alt="QR-код для перехода на лидерборд"></div><strong>Сканируй, чтобы войти</strong><p>Наведи камеру и открой страницу вечеринки.</p><code>${qrTargetUrl.replace('https://', '')}</code></aside></div>
-    </section>`;
-}
-
-function podiumMarkup(participant, index) {
-  return `<div class="podium-item"><div class="podium-avatar-wrap">${avatarMarkup(participant, 'participant-avatar')}<span class="podium-crown${index === 0 ? ' crown-winner' : ''}">${index === 0 ? '♛' : '✦'}</span></div><span class="podium-place">${index + 1} PLACE</span><span class="podium-name">${escapeHtml(participant.name)} <span class="name-emoji">${escapeHtml(participant.emoji || '🎲')}</span></span><span class="podium-score">${formatScore(participant.score)}</span></div>`;
-}
-
-function rowMarkup(participant, rank) {
-  return `<div class="leader-row"> <span class="leader-rank">${rank}</span><div class="leader-person">${avatarMarkup(participant, 'participant-avatar')}<span class="leader-name">${escapeHtml(participant.name)} <span class="name-emoji">${escapeHtml(participant.emoji || '🎲')}</span></span></div><span class="leader-score">${formatScore(participant.score)}</span></div>`;
-}
-
-function renderAdmin() {
-  app.innerHTML = `
-    <section class="view admin-view">
-      <div class="section-heading"><div><p class="eyebrow">Dealer's desk</p><h1 class="title">Control <span>room.</span></h1></div><p>Здесь можно менять очки участников и сбрасывать профили для новой регистрации.</p></div>
-      <div class="shell-card live-control"><div><span class="card-label">03 / Live mode</span><strong>Режим обновлений</strong><span id="live-mode-label"></span></div><button class="live-toggle" id="toggle-live" type="button" aria-pressed="true">Выключить live</button></div>
-      <div class="admin-grid">
-        <div class="shell-card admin-card">
-          <h2>Обновить счёт</h2><p>Выбери игрока и поставь новое значение или добавь ход.</p>
-          <label class="input-label" for="admin-participant">Участник</label>
-          <select class="select-input" id="admin-participant"></select>
-          <div class="mode-switch"><button class="mode-button active" data-mode="delta" type="button">Изменить на</button><button class="mode-button" data-mode="set" type="button">Поставить</button></div>
-          <label class="input-label" for="admin-value">Количество фишек</label>
-          <input class="number-input" id="admin-value" type="number" value="100" step="1">
-          <div class="admin-actions"><button class="button" id="save-score" type="button">Сохранить ход</button><a class="button-secondary" href="#leaderboard">Открыть табло</a></div>
-        </div>
-        <div class="shell-card admin-card"><h2>Игроки за столом</h2><p>Нажми ↻, чтобы удалить профиль и разрешить повторную регистрацию с этого устройства.</p><div class="participant-admin-list" id="admin-list"></div><div class="admin-actions"><button class="button-danger" id="reset-all" type="button">Сбросить всех</button></div></div>
-      </div>
-    </section>`;
+function renderAdmin(){
+  if(!state.admin)return adminLogin();
+  app.innerHTML='<section class="view">'+header('Пульт управления','Внесение итогов раздач, бонусов, кредитов и проверяемая история денег.')+
+    '<div class="admin-bar"><span>Вы вошли как <b>'+esc(state.admin.username)+'</b> · '+esc(state.admin.role)+'</span><div><button id="toggle-live" class="secondary small">'+(state.liveUpdates?'Приостановить табло':'Включить табло')+'</button> <button id="logout" class="secondary small">Выйти</button></div></div>'+
+    '<div class="stat-strip"><div><small>Капитал банка</small><strong class="'+(state.finance.bank<0?'negative':'')+'">'+fmt(state.finance.bank)+' $</strong></div><div><small>Не выдано наград</small><strong>'+fmt(state.finance.reservedBonuses)+' $</strong></div><div><small>Выдано кредитов</small><strong>'+fmt(state.finance.activeCredit)+' $</strong></div></div>'+
+    (state.finance.bank<0||state.finance.unbacked>0?'<div class="warning">Внимание: банк в минусе или обязательства превышают номинал запасов. Сверьте физические фишки и задолженности.</div>':'')+
+    '<div class="admin-columns"><div class="stack">'+
+    '<div class="panel"><h2>Внести результат</h2><p class="muted">Для покера укажи результаты всех участников раздачи или блока. Их сумма обязана равняться 0. Для остальных игр допускаются отдельные результаты.</p>'+
+    '<form id="record-form"><label>Игра или операция<select name="game" id="record-game">'+types.map(t=>'<option value="'+t[0]+'">'+esc(t[1])+'</option>').join('')+'</select></label>'+
+    '<div id="entry-rows">'+entryRow()+entryRow()+'</div><button class="secondary small" id="add-entry" type="button">+ Добавить игрока</button>'+
+    '<label>Номер раунда / комментарий<input name="note" maxlength="240" placeholder="Стол 2, раунд 5"></label>'+
+    '<div id="record-total" class="total-box">Сумма изменений: 0 $</div><button class="primary" type="submit">Сохранить результаты</button></form></div>'+
+    '<div class="panel"><h2>Участники</h2><p class="muted">Можно добавить гостя вручную или вставить список «Имя; серийный номер» по строкам. Максимум 23 человека.</p>'+
+    '<form id="guest-form" class="form-grid"><label>Имя<input name="name" required></label><label>Серийный номер<input name="serial" maxlength="6" placeholder="BLK721"></label><button class="secondary">Добавить гостя</button></form>'+
+    '<form id="bulk-form"><label>Массовый импорт<textarea name="text" rows="3" placeholder="Рома; BLK721&#10;Сеня; MFX309"></textarea></label><button class="secondary" type="submit">Импортировать</button></form>'+
+    '<p class="muted">Все участники: '+state.participants.length+' / 23</p><div class="accounts">'+state.participants.map(p=>'<div><b>'+esc(p.name)+'</b><small>'+esc(p.serial||'')+'</small><button class="text-button" type="button" data-archive="'+esc(p.id)+'">Скрыть</button></div>').join('')+'</div></div>'+staffPanel()+'</div>'+
+    '<div class="panel audit"><div class="flex-heading"><h2>Журнал операций</h2><button id="reload" class="secondary small">Обновить</button></div>'+transactionList()+'</div></div></section>';
   bindAdmin();
-  renderAdminList();
-  updateLiveIndicators();
 }
-
-function renderAdminList() {
-  const select = document.querySelector('#admin-participant');
-  const list = document.querySelector('#admin-list');
-  if (!select || !list) return;
-  const selected = select.value;
-  select.innerHTML = state.participants.length ? state.participants.map((participant) => `<option value="${participant.id}">${escapeHtml(participant.name)} · ${formatScore(participant.score)}</option>`).join('') : '<option value="">Нет участников</option>';
-  if (state.participants.some((participant) => participant.id === selected)) select.value = selected;
-  list.innerHTML = state.participants.length ? state.participants.map((participant) => `<div class="admin-person">${avatarMarkup(participant, 'participant-avatar')}<span class="admin-person-name">${escapeHtml(participant.name)} <span class="name-emoji">${escapeHtml(participant.emoji || '🎲')}</span></span><span class="admin-person-score">${formatScore(participant.score)}</span><button class="icon-reset" data-reset="${participant.id}" type="button" title="Сбросить профиль">↻</button></div>`).join('') : '<div class="admin-empty">Участников пока нет.</div>';
-  list.querySelectorAll('[data-reset]').forEach((button) => button.addEventListener('click', () => resetParticipant(button.dataset.reset)));
+function bindAdmin(){
+  document.querySelector('#logout').onclick=async()=>{try{await post('/api/admin/logout',{});}catch{}state.admin=null;renderAdmin();};
+  document.querySelector('#toggle-live').onclick=async()=>{try{await post('/api/admin/live-mode',{enabled:!state.liveUpdates});await refresh();renderAdmin();announce(state.liveUpdates?'Табло обновляется':'Обновления приостановлены');}catch(err){announce(err.message,true);}};
+  document.querySelectorAll('[data-archive]').forEach(b=>b.onclick=async()=>{if(!confirm('Скрыть гостя из таблиц? Это возможно, только если у него нет записанных операций.'))return;try{await post('/api/admin/participants/archive',{id:b.dataset.archive});await refresh();renderAdmin();announce('Гость скрыт');}catch(err){announce(err.message,true);}});
+  const rows=document.querySelector('#entry-rows'),form=document.querySelector('#record-form'),game=document.querySelector('#record-game');
+  const total=()=>{const sum=[...rows.querySelectorAll('input[name=delta]')].reduce((n,input)=>n+(Number(input.value)||0),0);document.querySelector('#record-total').textContent='Сумма изменений: '+signed(sum)+(game.value==='poker'&&sum!==0?' · покер не сбалансирован':'');};
+  function wire(){rows.querySelectorAll('.remove-entry').forEach(b=>b.onclick=()=>{if(rows.children.length>1)b.parentElement.remove();total();});rows.querySelectorAll('input').forEach(i=>i.oninput=total);total();}
+  document.querySelector('#add-entry').onclick=()=>{if(rows.children.length>=23)return announce('Не более 23 участников',true);rows.insertAdjacentHTML('beforeend',entryRow());wire();};
+  game.onchange=()=>{total();};wire();
+  form.onsubmit=async e=>{
+    e.preventDefault();const kind=(types.find(x=>x[0]===game.value)||types[0])[2];
+    const entries=[...rows.children].map(r=>({playerId:r.querySelector('select').value,delta:Number(r.querySelector('input').value)})).filter(e=>e.playerId);
+    if(!entries.length)return announce('Выбери участников',true);
+    const note=form.querySelector('[name=note]').value;
+    if(kind==='game'&&game.value==='poker'&&entries.reduce((a,x)=>a+x.delta,0)!==0)return announce('В покере сумма должна быть нулевой',true);
+    try{await post('/api/admin/transactions',{kind,game:game.value,entries,note});await refresh();await loadAdmin();renderAdmin();announce('Операция записана');}
+    catch(error){announce(error.message,true);}
+  };
+  document.querySelector('#guest-form').onsubmit=async e=>{e.preventDefault();try{await post('/api/admin/participants',Object.fromEntries(new FormData(e.target)));await refresh();renderAdmin();announce('Гость добавлен');}catch(err){announce(err.message,true);}};
+  document.querySelector('#bulk-form').onsubmit=async e=>{e.preventDefault();try{const d=await post('/api/admin/participants/bulk',Object.fromEntries(new FormData(e.target)));await refresh();renderAdmin();announce('Импортировано: '+d.count);}catch(err){announce(err.message,true);}};
+  document.querySelector('#reload').onclick=async()=>{await refresh();await loadAdmin();renderAdmin();};
+  document.querySelectorAll('[data-reverse]').forEach(b=>b.onclick=async()=>{if(!confirm('Создать обратную проводку? Исходная запись останется в истории.'))return;try{await post('/api/admin/transactions/reverse',{id:b.dataset.reverse});await refresh();await loadAdmin();renderAdmin();announce('Операция отменена');}catch(err){announce(err.message,true);}});
+  const sf=document.querySelector('#staff-form');
+  if(sf)sf.onsubmit=async e=>{e.preventDefault();try{await post('/api/admin/accounts',Object.fromEntries(new FormData(sf)));await loadAdmin();renderAdmin();announce('Администратор назначен');}catch(err){announce(err.message,true);}};
+  document.querySelectorAll('[data-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('Отозвать доступ '+b.dataset.revoke+'?'))return;try{await post('/api/admin/accounts/revoke',{username:b.dataset.revoke});await loadAdmin();renderAdmin();announce('Доступ отозван');}catch(err){announce(err.message,true);}});
 }
-
-function bindAdmin() {
-  document.querySelectorAll('.mode-button').forEach((button) => button.addEventListener('click', () => {
-    state.mode = button.dataset.mode;
-    document.querySelectorAll('.mode-button').forEach((item) => item.classList.toggle('active', item === button));
-  }));
-  document.querySelector('#toggle-live').addEventListener('click', toggleLiveMode);
-  document.querySelector('#save-score').addEventListener('click', saveScore);
-  document.querySelector('#reset-all').addEventListener('click', async () => {
-    if (!state.participants.length || !window.confirm('Удалить всех участников и их аватары?')) return;
-    try { await api('/api/admin/reset-all', { method: 'POST', body: '{}' }); await loadState(); renderAdminList(); showToast('Стол очищен'); } catch (error) { showToast(error.message, true); }
-  });
+async function render(){
+  try{await refresh();}catch(err){app.innerHTML='<p class="empty">Нет связи с сервером. '+esc(err.message)+'</p>';return;}
+  if(location.hash==='#admin'){
+    try{const a=await api('/api/admin/me');state.admin=a.user;await loadAdmin();}catch{state.admin=null;}
+    renderAdmin();
+  }else if(location.hash==='#register')renderRegistration();
+  else renderBoard();
 }
-
-async function toggleLiveMode() {
-  const button = document.querySelector('#toggle-live');
-  button.disabled = true;
-  try {
-    const payload = await api('/api/admin/live-mode', { method: 'POST', body: JSON.stringify({ enabled: !state.liveUpdates }) });
-    state.liveUpdates = payload.liveUpdates !== false;
-    if (state.liveUpdates) await loadState();
-    startPolling();
-    updateLiveIndicators();
-    if (state.liveUpdates) renderAdminList();
-    showToast(state.liveUpdates ? 'Live-обновления включены' : 'Live-обновления выключены');
-  } catch (error) {
-    showToast(error.message, true);
-  } finally {
-    button.disabled = false;
-  }
+let lastSignature='';
+async function tick(){
+  try{
+    const r=await api('/api/state');
+    const sig=JSON.stringify([r.updatedAt,r.boards?.overall?.length,r.liveUpdates]);
+    if(r.liveUpdates&&sig!==lastSignature&&location.hash!=='#admin'){state.boards=r.boards;state.participants=r.participants;state.finance=r.finance;renderBoard();}
+    lastSignature=sig;
+    const label=document.querySelector('.live-label');if(label)label.textContent=r.liveUpdates?'● LIVE':'Ⅱ PAUSED';
+  }catch{}finally{state.poll=setTimeout(tick,2500);}
 }
-
-async function saveScore() {
-  const id = document.querySelector('#admin-participant').value;
-  const value = Number(document.querySelector('#admin-value').value);
-  if (!id || !Number.isFinite(value)) { showToast('Выбери участника и введи число', true); return; }
-  try { await api('/api/admin/update', { method: 'POST', body: JSON.stringify({ id, value, mode: state.mode }) }); await loadState(); renderAdminList(); showToast('Счёт обновлён'); } catch (error) { showToast(error.message, true); }
-}
-
-async function resetParticipant(id) {
-  const participant = state.participants.find((item) => item.id === id);
-  if (!participant || !window.confirm(`Сбросить профиль ${participant.name}?`)) return;
-  try { await api('/api/admin/reset', { method: 'POST', body: JSON.stringify({ id }) }); await loadState(); renderAdminList(); showToast('Профиль сброшен'); } catch (error) { showToast(error.message, true); }
-}
-
-async function render() {
-  try { await loadState(); } catch (error) { showToast('Сервер пока не отвечает', true); }
-  const route = getRoute();
-  if (route === 'register') renderRegister();
-  else if (route === 'admin') renderAdmin();
-  else renderLeaderboard();
-  startPolling();
-}
-
-window.addEventListener('hashchange', render);
-render();
+window.addEventListener('hashchange',render);
+render().then(()=>tick());

@@ -2,32 +2,30 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0d0a1f">
-  <title>Blackjack Birthday</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0e0708">
+  <meta name="description" content="BLACK 21 — живые рейтинги покера, крэпса, блэкджека и рулетки, касса и администраторы вечера.">
+  <title>BLACK 21 — Casino Night</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div class="page-glow page-glow-left"></div>
-  <div class="page-glow page-glow-right"></div>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#leaderboard" aria-label="На лидерборд">
+      <a class="brand" href="#leaderboard" aria-label="На общий рейтинг">
         <span class="brand-mark">♠</span>
-        <span><b>BLACKJACK</b><small>BIRTHDAY CLUB</small></span>
+        <span><b>BLACK 21</b><small>THE PRIVATE CASINO</small></span>
       </a>
-      <div class="topbar-actions">
-        <span class="live-status"><i></i> LIVE</span>
-      </div>
+      <nav class="topbar-actions" aria-label="Разделы">
+        <span class="live-label">● LIVE</span>
+        <a href="#leaderboard">Рейтинги</a>
+        <a href="#register">Участникам</a>
+        <a href="#admin">Админка</a>
+      </nav>
     </header>
-
-    <main id="app" aria-live="polite"></main>
-
-    <footer class="footer-note">THE HOUSE ALWAYS WINS · BUT TONIGHT WE PLAY TOGETHER</footer>
+    <main id="app"></main>
+    <footer class="footer-note">THE HOUSE ALWAYS WINS · ИГРОВЫЕ ДЕНЬГИ · BLACK 21</footer>
   </div>
-
-  <input id="avatar-file" type="file" accept="image/*" hidden>
-  <div id="toast" class="toast" role="status"></div>
-  <script src="/app.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
 </body>
 </html>
